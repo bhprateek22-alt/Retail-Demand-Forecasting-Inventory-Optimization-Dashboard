@@ -1,0 +1,65 @@
+-- =========================================================================
+-- INVENTORY & DEMAND FORECASTING MEASURES TABLE: [_Inventory Measures]
+-- =========================================================================
+
+// 1. Average Daily Demand (Last 30-Day Rolling Average)
+Avg Daily Demand = 
+CALCULATE(
+    AVERAGEX(VALUES('Dim_Date'[Date]), SUM('Sales_Data'[Sales_Units])),
+    DATESINPERIOD('Dim_Date'[Date], MAX('Dim_Date'[Date]), -30, DAY)
+)
+
+// 2. Demand Standard Deviation (30-Day Volatility)
+Demand StdDev = 
+CALCULATE(
+    STDEV.P('Sales_Data'[Sales_Units]),
+    DATESINPERIOD('Dim_Date'[Date], MAX('Dim_Date'[Date]), -30, DAY)
+)
+
+// 3. Service Level Z-Score Mapping
+Z Score = 
+VAR ServiceLevel = SELECTEDVALUE('Parameters'[Service_Level], 0.95)
+RETURN
+SWITCH(
+    TRUE(),
+    ServiceLevel >= 0.99, 2.33,
+    ServiceLevel >= 0.98, 2.05,
+    ServiceLevel >= 0.95, 1.65,
+    ServiceLevel >= 0.90, 1.28,
+    1.04
+)
+
+// 4. Safety Stock (Buffer Units Required)
+Safety Stock = 
+VAR LeadTime = SELECTEDVALUE('Parameters'[Lead_Time_Days], 7)
+RETURN
+ROUNDUP([Z Score] * [Demand StdDev] * SQRT(LeadTime), 0)
+
+// 5. Reorder Point (Stock Threshold to Trigger Purchase)
+Reorder Point = 
+VAR LeadTime = SELECTEDVALUE('Parameters'[Lead_Time_Days], 7)
+RETURN
+ROUNDUP(([Avg Daily Demand] * LeadTime) + [Safety Stock], 0)
+
+// 6. Economic Order Quantity (Optimal Order Batch Size)
+EOQ = 
+VAR AnnualDemand = [Avg Daily Demand] * 365
+VAR OrderCost = SELECTEDVALUE('Parameters'[Ordering_Cost], 50)
+VAR HoldingCost = SELECTEDVALUE('Parameters'[Holding_Cost], 3.5)
+RETURN
+ROUNDUP(SQRT((2 * AnnualDemand * OrderCost) / HoldingCost), 0)
+
+// 7. Dynamic Stock Status Alert
+Stock Status = 
+VAR CurrentStock = SELECTEDVALUE('Parameters'[Current_Stock], 0)
+VAR ROP = [Reorder Point]
+RETURN
+IF(
+    CurrentStock <= ROP,
+    "⚠️ REORDER NEEDED",
+    "✅ Stock Healthy"
+)
+
+// 8. Hex Color Code for Dynamic Visual Formatting
+Status Color = 
+IF([Stock Status] = "⚠️ REORDER NEEDED", "#FF4D4D", "#2ECC71")
