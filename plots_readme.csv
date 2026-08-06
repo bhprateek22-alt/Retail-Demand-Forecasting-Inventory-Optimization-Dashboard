@@ -1,0 +1,9 @@
+Visual Type,Fields / Measures Placed,Purpose
+Slicer (Dropdown),Parameters[SKU],Select single product to inspect metrics
+Card (KPI),Parameters[Current_Stock],Shows live on-hand stock
+Card (KPI),[Safety Stock],Required buffer stock level
+Card (KPI),[Reorder Point],Target stock threshold
+Card (KPI),[EOQ],Recommended order batch size
+Card (Alert),[Stock Status],Conditional formatting fill set to measure [Status Color]
+Line Chart,X-Axis: Dim_Date[Date]Y-Axis: SUM(Sales_Data[Sales_Units])Tooltips: [Avg Daily Demand],Displays demand trend over time
+Gauge Visual,Value: Parameters[Current_Stock]Target: [Reorder Point],Displays visual progress toward stockout threshold
